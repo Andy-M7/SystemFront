@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { Picker } from '@react-native-picker/picker';
+import { BASE_URL } from '../conexion'; // ✅ Importación añadida
 
 const RegistrarEmpleado = () => {
   const [dni, setDni] = useState('');
@@ -50,7 +51,7 @@ const RegistrarEmpleado = () => {
     }
 
     axios
-      .post('http://192.168.1.64:5000/empleados', {
+      .post(`${BASE_URL}/empleados`, {
         dni,
         nombres,
         apellidos,
@@ -65,10 +66,9 @@ const RegistrarEmpleado = () => {
         setApellidos('');
       })
       .catch((error) => {
-      const msg = error.response?.data || 'No se pudo registrar el empleado';
-      setError(msg);
-       });
-
+        const msg = error.response?.data || 'No se pudo registrar el empleado';
+        setError(msg);
+      });
   };
 
   return (

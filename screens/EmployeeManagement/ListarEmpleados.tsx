@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { Picker } from '@react-native-picker/picker';
+import { BASE_URL } from '../conexion'; // ✅ Importación añadida
 
 interface Empleado {
   id: number;
@@ -31,7 +32,7 @@ const ListarEmpleados = () => {
 
   useEffect(() => {
     setLoading(true);
-    axios.get('http://192.168.1.64:5000/empleados')
+    axios.get(`${BASE_URL}/empleados`)
       .then((response) => setEmpleados(response.data))
       .catch((error) => console.error(error))
       .finally(() => setLoading(false));
@@ -65,7 +66,7 @@ const ListarEmpleados = () => {
           text: 'Sí',
           onPress: () => {
             setLoadingUpdate(empleadoId);
-            axios.patch(`http://192.168.1.64:5000/empleados/estado/${empleadoId}`, { estado: nuevoEstado })
+            axios.patch(`${BASE_URL}/empleados/estado/${empleadoId}`, { estado: nuevoEstado })
               .then(() => {
                 setEmpleados((prev) =>
                   prev.map((empleado) =>
@@ -111,7 +112,6 @@ const ListarEmpleados = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Gestión de Empleados</Text>
 
-      {/* Filtros */}
       <View style={styles.filters}>
         <Text style={styles.filterLabel}>Filtrar por Estado</Text>
         <Picker
@@ -158,7 +158,6 @@ const ListarEmpleados = () => {
         </Picker>
       </View>
 
-      {/* Encabezado tipo tabla */}
       <View style={styles.tableHeader}>
         <Text style={styles.column}>DNI</Text>
         <Text style={styles.column}>Nombre</Text>
@@ -167,7 +166,6 @@ const ListarEmpleados = () => {
         <Text style={styles.column}>Acción</Text>
       </View>
 
-      {/* Lista de empleados */}
       {loading ? (
         <ActivityIndicator size="large" color="#007bff" />
       ) : empleadosOrdenados.length === 0 ? (

@@ -9,6 +9,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
+import { BASE_URL } from '../conexion'; // ✅ Import centralizado
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ListarUsuarios'>;
 
@@ -30,7 +31,7 @@ const ListarUsuarios = () => {
 
   const obtenerUsuarios = () => {
     setLoading(true);
-    axios.get('http://192.168.1.64:5000/api/usuarios')
+    axios.get(`${BASE_URL}/api/usuarios`)
       .then((response) => {
         setUsuarios(response.data);
         setTotalUsuarios(response.data.length);
@@ -63,7 +64,7 @@ const ListarUsuarios = () => {
           text: 'Eliminar',
           style: 'destructive',
           onPress: () => {
-            axios.delete(`http://192.168.1.64:5000/api/usuarios/${id}`)
+            axios.delete(`${BASE_URL}/api/usuarios/${id}`)
               .then(() => {
                 Alert.alert('Usuario eliminado correctamente');
                 obtenerUsuarios();

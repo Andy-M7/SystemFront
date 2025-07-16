@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { Picker } from '@react-native-picker/picker';
+import { BASE_URL } from '../conexion'; // ✅ Importa la URL base
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'RegistrarProducto'>;
 
@@ -34,7 +35,7 @@ const RegistrarProducto = () => {
   useEffect(() => {
     const cargarUnidades = async () => {
       try {
-        const response = await fetch('http://192.168.1.64:5000/api/unidades');
+        const response = await fetch(`${BASE_URL}/api/unidades`);
         const data = await response.json();
         if (response.ok) {
           setUnidades(data);
@@ -63,8 +64,13 @@ const RegistrarProducto = () => {
       return;
     }
 
+    if (codigo.length > 10) {
+      Alert.alert('Error', 'El código no debe exceder los 10 dígitos.');
+      return;
+    }
+
     try {
-      const response = await fetch('http://192.168.1.64:5000/api/productos', {
+      const response = await fetch(`${BASE_URL}/api/productos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -98,15 +104,19 @@ const RegistrarProducto = () => {
         style={styles.input}
         placeholder="Código del producto"
         value={codigo}
-        onChangeText={setCodigo}
         keyboardType="numeric"
+        onChangeText={(text) => {
+          if (/^\d{0,10}$/.test(text)) setCodigo(text);
+        }}
       />
+
       <TextInput
         style={styles.input}
         placeholder="Nombre del producto"
         value={nombre}
         onChangeText={setNombre}
       />
+
       <TextInput
         style={styles.input}
         placeholder="Descripción"

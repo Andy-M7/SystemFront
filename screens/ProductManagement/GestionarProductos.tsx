@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
+import { BASE_URL } from '../conexion'; // ✅ (para futura expansión si se desea)
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'GestionarProductos'>;
 

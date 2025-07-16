@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
+import { BASE_URL } from '../conexion'; // ✅ NUEVO
 
 type Cliente = {
   id: number;
@@ -38,7 +39,7 @@ const ListarClientes = ({ navigation }: any) => {
   const obtenerClientes = async () => {
     setCargando(true);
     try {
-      const response = await axios.get('http://192.168.1.64:5000/api/clientes');
+      const response = await axios.get(`${BASE_URL}/api/clientes`);
       setClientes(response.data);
     } catch (error) {
       console.error(error);
@@ -56,7 +57,7 @@ const ListarClientes = ({ navigation }: any) => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await axios.delete(`http://192.168.1.64:5000/api/clientes/${id}`);
+            await axios.delete(`${BASE_URL}/api/clientes/${id}`);
             Alert.alert('Éxito', 'Cliente eliminado correctamente');
             obtenerClientes();
           } catch (error) {

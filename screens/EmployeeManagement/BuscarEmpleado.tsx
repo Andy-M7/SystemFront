@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { Picker } from '@react-native-picker/picker';
+import { BASE_URL } from '../conexion'; // ✅ Nuevo import
 
 interface Empleado {
   id: number;
@@ -33,7 +34,7 @@ const BuscarEmpleado: React.FC = () => {
 
   useEffect(() => {
     axios
-      .get('http://192.168.1.64:5000/empleados')
+      .get(`${BASE_URL}/empleados`)
       .then((res) => setEmpleados(res.data))
       .catch((err) => console.error('Error al obtener empleados:', err));
   }, []);
@@ -94,7 +95,7 @@ const BuscarEmpleado: React.FC = () => {
     }
 
     axios
-      .put(`http://192.168.1.64:5000/empleados/${empleadoSeleccionado.id}`, {
+      .put(`${BASE_URL}/empleados/${empleadoSeleccionado.id}`, {
         dni: empleadoSeleccionado.dni,
         nombres,
         apellidos,

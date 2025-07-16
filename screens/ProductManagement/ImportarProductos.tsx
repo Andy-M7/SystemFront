@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
+import { BASE_URL } from '../conexion'; // ✅ Importar desde archivo central
 
 const ImportarProductos = () => {
   const [cargando, setCargando] = useState(false);
@@ -44,7 +45,7 @@ const ImportarProductos = () => {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      const response = await fetch('http://192.168.1.64:5000/api/productos/importar-productos', {
+      const response = await fetch(`${BASE_URL}/api/productos/importar-productos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -88,29 +89,53 @@ const ImportarProductos = () => {
 
       const url = 'http://baxperu.com/prueba/appPrueba/plantilla-productos.xlsx';
       const nombreArchivo = 'plantilla-productos.xlsx';
-      const rutaTemporal = FileSystem.documentDirectory + nombreArchivo;
 
-      // Descargar archivo desde URL externa
-      const download = await FileSystem.downloadAsync(url, rutaTemporal);
+      if (Platform.OS === 'android') {
+        const permiso = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
 
-      if (download.status !== 200) {
-        Alert.alert('Error', 'No se pudo descargar la plantilla desde el servidor.');
-        return;
+        if (!permiso.granted) {
+          Alert.alert('Permiso requerido', 'Se necesita acceso al almacenamiento para guardar la plantilla.');
+          return;
+        }
+
+        const uri = await FileSystem.StorageAccessFramework.createFileAsync(
+          permiso.directoryUri,
+          nombreArchivo,
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+
+        const response = await fetch(url);
+        const blob = await response.blob();
+
+        const reader = new FileReader();
+        reader.onload = async () => {
+          if (typeof reader.result === 'string') {
+            const base64 = reader.result.split(',')[1];
+            if (base64) {
+              await FileSystem.writeAsStringAsync(uri, base64, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+              Alert.alert('Éxito', 'La plantilla fue guardada correctamente.');
+            }
+          } else {
+            Alert.alert('Error', 'No se pudo procesar el archivo descargado (tipo inesperado).');
+          }
+        };
+
+        reader.readAsDataURL(blob);
+      } else {
+        const destino = FileSystem.documentDirectory + nombreArchivo;
+        const download = await FileSystem.downloadAsync(url, destino);
+
+        if (download.status !== 200) {
+          Alert.alert('Error', 'No se pudo descargar la plantilla.');
+          return;
+        }
+
+        Alert.alert('Éxito', 'Plantilla descargada correctamente.');
       }
-
-      // Pedir permisos
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permiso denegado', 'No se pudo acceder al almacenamiento para guardar el archivo.');
-        return;
-      }
-
-      // Guardar en almacenamiento
-      await MediaLibrary.saveToLibraryAsync(download.uri);
-
-      Alert.alert('Plantilla guardada', 'La plantilla fue descargada y guardada en tu dispositivo.');
     } catch (error) {
-      console.error('Error al descargar o guardar plantilla:', error);
+      console.error('Error al descargar plantilla:', error);
       Alert.alert('Error', 'Hubo un problema al guardar la plantilla.');
     } finally {
       setCargando(false);

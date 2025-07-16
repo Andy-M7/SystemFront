@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { BASE_URL } from '../conexion'; // ✅ Ruta según tu estructura
 
 type Cliente = {
   id: number;
@@ -36,7 +37,7 @@ const ActualizarCliente = () => {
   const obtenerCliente = async () => {
     try {
       const response = await axios.get(
-        `http://192.168.1.64:5000/api/clientes/${route.params.id}`
+        `${BASE_URL}/api/clientes/${route.params.id}`
       );
       const data = response.data;
       setCliente(data);
@@ -63,7 +64,7 @@ const ActualizarCliente = () => {
     }
 
     if (!validarNombre(nombre)) {
-      Alert.alert('Validación', 'El nombre o razon social solo debe contener letras, números, espacios o guiones.');
+      Alert.alert('Validación', 'El nombre o razón social solo debe contener letras, números, espacios o guiones.');
       return false;
     }
 
@@ -79,7 +80,7 @@ const ActualizarCliente = () => {
     if (!validarCampos() || !cliente) return;
 
     try {
-      await axios.put(`http://192.168.1.64:5000/api/clientes/${cliente.id}`, {
+      await axios.put(`${BASE_URL}/api/clientes/${cliente.id}`, {
         nombre_razon_social: nombre.trim(),
         direccion: direccion.trim(),
         telefono: telefono.trim(),

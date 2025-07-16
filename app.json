@@ -36,6 +36,10 @@
         "projectId": "fa09e8c1-71c8-458a-852d-7e7a14ae55a4"
       }
     },
-    "owner": "haroldber"
+    "owner": "haroldber",
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser"
+    ]
   }
 }

@@ -12,6 +12,7 @@ import {
 import axios from 'axios';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { BASE_URL } from '../conexion'; // ✅ Importar BASE_URL
 
 const VisualizarCatalogo = () => {
   const [productos, setProductos] = useState<any[]>([]);
@@ -22,7 +23,7 @@ const VisualizarCatalogo = () => {
 
   const cargarProductos = async () => {
     try {
-      const res = await axios.get('http://192.168.1.64:5000/api/productos');
+      const res = await axios.get(`${BASE_URL}/api/productos`);
       if (res.data.mensaje) {
         setMensaje(res.data.mensaje);
         setProductos([]);
@@ -56,7 +57,7 @@ const VisualizarCatalogo = () => {
   const cambiarEstado = async (codigo: string, estadoActual: string) => {
     const nuevoEstado = estadoActual === 'Activo' ? 'Inactivo' : 'Activo';
     try {
-      await axios.put(`http://192.168.1.64:5000/api/productos/estado/${codigo}`, {
+      await axios.put(`${BASE_URL}/api/productos/estado/${codigo}`, {
         estado: nuevoEstado,
       });
       cargarProductos();
@@ -110,7 +111,7 @@ const VisualizarCatalogo = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Catálogo de Productos</Text>
+      <Text style={styles.title}>Productos</Text>
 
       <TextInput
         style={styles.input}
@@ -121,6 +122,8 @@ const VisualizarCatalogo = () => {
 
       {mensaje ? (
         <Text style={styles.mensaje}>{mensaje}</Text>
+      ) : filtrar().length === 0 ? (
+        <Text style={styles.mensaje}>Producto no encontrado</Text>
       ) : (
         <FlatList
           data={filtrar()}

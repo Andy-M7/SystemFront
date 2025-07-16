@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RootStackParamList } from './navigation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from './conexion';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -23,12 +25,24 @@ const Login = () => {
   const [contrasena, setContrasena] = useState('');
   const [secure, setSecure] = useState(true);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      e.preventDefault();
+      navigation.navigate('Dashboard'); // <- Cambia a tu pantalla de inicio deseada
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+
   const validarCorreo = (correo: string): boolean => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(correo);
   };
 
   const handleLogin = async () => {
+    console.log('✅ BOTÓN PRESIONADO');
+
     if (!correo || !contrasena) {
       Alert.alert('Error', 'Por favor, completa todos los campos');
       return;
@@ -40,12 +54,21 @@ const Login = () => {
     }
 
     try {
-      const res = await axios.post('http://192.168.1.64:5000/api/auth/login', {
+      const res = await axios.post(`${BASE_URL}/api/auth/login`, {
         correo_electronico: correo.trim().toLowerCase(),
-        contrasena: contrasena.trim()
+        contrasena: contrasena.trim(),
       });
 
       const { usuario } = res.data;
+      console.log('🧾 Usuario recibido:', usuario);
+
+      if (!usuario || !usuario.id) {
+        Alert.alert('Error', 'Usuario inválido');
+        return;
+      }
+
+      await AsyncStorage.setItem('usuario', JSON.stringify(usuario));
+
       Alert.alert('Bienvenido', `${usuario.nombre} - Rol: ${usuario.rol}`);
 
       navigation.reset({
@@ -53,6 +76,7 @@ const Login = () => {
         routes: [{ name: 'Dashboard' }],
       });
     } catch (error: any) {
+      console.log('❌ ERROR:', error.message);
       const msg = error.response?.data?.error || 'No se pudo conectar al servidor';
       Alert.alert('Error', msg);
     }
@@ -65,7 +89,6 @@ const Login = () => {
     >
       <Text style={styles.title}>Iniciar Sesión</Text>
 
-      {/* Campo de correo */}
       <View style={styles.inputContainer}>
         <Ionicons name="mail-outline" size={20} color="#999" style={styles.icon} />
         <TextInput
@@ -79,7 +102,6 @@ const Login = () => {
         />
       </View>
 
-      {/* Campo de contraseña */}
       <View style={styles.inputContainer}>
         <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.icon} />
         <TextInput

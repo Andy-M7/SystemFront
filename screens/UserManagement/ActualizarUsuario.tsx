@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { BASE_URL } from '../conexion';
 
 interface Props {
   route: { params: { id: number } };
@@ -27,7 +28,7 @@ const ActualizarUsuario = ({ route, navigation }: Props) => {
 
   useEffect(() => {
     setCargando(true);
-    axios.get(`http://192.168.1.64:5000/api/usuarios`)
+    axios.get(`${BASE_URL}/api/usuarios`)
       .then((res) => {
         const usuario = res.data.find((u: any) => u.id === id);
         if (usuario) {
@@ -58,7 +59,7 @@ const ActualizarUsuario = ({ route, navigation }: Props) => {
       return;
     }
 
-    axios.put(`http://192.168.1.64:5000/api/usuarios/${id}`, {
+    axios.put(`${BASE_URL}/api/usuarios/${id}`, {
       correo_electronico: correo,
       contrasena,
       rol,
@@ -138,6 +139,7 @@ const ActualizarUsuario = ({ route, navigation }: Props) => {
 
 export default ActualizarUsuario;
 
+// ⬇️ STYLES
 const styles = StyleSheet.create({
   container: {
     flex: 1,

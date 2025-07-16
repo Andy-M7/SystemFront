@@ -12,6 +12,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Picker } from '@react-native-picker/picker';
+import { BASE_URL } from '../conexion'; // ✅ NUEVO
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditarProducto'>;
 type RouteParams = RouteProp<RootStackParamList, 'EditarProducto'>;
@@ -35,14 +36,13 @@ const EditarProducto = () => {
   useEffect(() => {
     const cargarProducto = async () => {
       try {
-        const response = await fetch(`http://192.168.1.64:5000/api/productos/buscar?criterio=${codigo}`);
+        const response = await fetch(`${BASE_URL}/api/productos/buscar?criterio=${codigo}`);
         const data = await response.json();
         if (response.ok) {
           setProducto(data);
           setNombre(data.nombre);
           setDescripcion(data.descripcion);
 
-          // Obtener unidad por nombre
           const unidadEncontrada = unidadesDisponibles.find((u) => u.nombre === data.unidad_medida);
           if (unidadEncontrada) {
             setUnidadId(unidadEncontrada.id);
@@ -58,7 +58,7 @@ const EditarProducto = () => {
 
     const cargarUnidades = async () => {
       try {
-        const res = await fetch('http://192.168.1.64:5000/api/unidades');
+        const res = await fetch(`${BASE_URL}/api/unidades`);
         const data = await res.json();
         if (res.ok && Array.isArray(data)) {
           setUnidadesDisponibles(data);
@@ -68,7 +68,6 @@ const EditarProducto = () => {
       }
     };
 
-    // Cargar unidades primero, luego el producto
     const cargarTodo = async () => {
       await cargarUnidades();
       await cargarProducto();
@@ -84,7 +83,7 @@ const EditarProducto = () => {
     }
 
     try {
-      const response = await fetch(`http://192.168.1.64:5000/api/productos/${codigo}`, {
+      const response = await fetch(`${BASE_URL}/api/productos/${codigo}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -119,7 +118,7 @@ const EditarProducto = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const res = await fetch(`http://192.168.1.64:5000/api/productos/${codigo}/inactivar`, {
+              const res = await fetch(`${BASE_URL}/api/productos/${codigo}/inactivar`, {
                 method: 'PATCH',
               });
               const data = await res.json();
@@ -146,7 +145,8 @@ const EditarProducto = () => {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Editar Producto</Text>
 
-      <TextInput style={styles.input} value={codigo} editable={false} />
+      <TextInput style={[styles.input, styles.disabledInput]} value={codigo} editable={false} />
+
       <TextInput style={styles.input} value={nombre} onChangeText={setNombre} placeholder="Nombre" />
       <TextInput style={styles.input} value={descripcion} onChangeText={setDescripcion} placeholder="Descripción" />
 
@@ -167,7 +167,6 @@ const EditarProducto = () => {
       <TouchableOpacity style={styles.button} onPress={handleGuardar}>
         <Text style={styles.buttonText}>Guardar Cambios</Text>
       </TouchableOpacity>
-
     </ScrollView>
   );
 };
@@ -227,5 +226,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  disabledInput: {
+    backgroundColor: '#e0e0e0',
+    color: '#666',
   },
 });

@@ -7,6 +7,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
+import { BASE_URL } from '../conexion'; // ✅ NUEVO
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'GestionarClientes'>;
 
@@ -52,7 +53,7 @@ const RegistrarClientes = () => {
     }
 
     try {
-      const res = await axios.post('http://192.168.1.64:5000/api/clientes', {
+      const res = await axios.post(`${BASE_URL}/api/clientes`, {
         nombre_razon_social: nombre.trim(),
         documento: documento.trim(),
         direccion: direccion.trim(),

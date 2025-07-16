@@ -3,6 +3,7 @@ import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-nativ
 import axios from 'axios';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { BASE_URL } from '../conexion';
 
 const RegistrarUsuario = () => {
   const [empleados, setEmpleados] = useState<any[]>([]);
@@ -15,7 +16,7 @@ const RegistrarUsuario = () => {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    axios.get('http://192.168.1.64:5000/empleados')
+    axios.get(`${BASE_URL}/empleados`)
       .then(response => setEmpleados(response.data))
       .catch(error => console.error("Error al obtener empleados", error));
   }, []);
@@ -49,7 +50,7 @@ const RegistrarUsuario = () => {
       return;
     }
 
-    axios.post('http://192.168.1.64:5000/api/usuarios', {
+    axios.post(`${BASE_URL}/api/usuarios`, {
       empleado_id: empleadoSeleccionado,
       correo_electronico: correo,
       contrasena: contrasena,

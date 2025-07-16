@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../App';
-import Icon from 'react-native-vector-icons/FontAwesome5'; // Asegúrate de que esté instalado
+import { FontAwesome5 } from '@expo/vector-icons'; // Reemplazo para evitar confusión si usas Expo
 
 type GestionarUsuariosNavigationProp = StackNavigationProp<RootStackParamList, 'GestionarUsuarios'>;
 
@@ -19,7 +19,7 @@ const GestionarUsuarios: React.FC<Props> = ({ navigation }) => {
         style={styles.button}
         onPress={() => navigation.navigate('RegistrarUsuario')}
       >
-        <Icon name="user-plus" size={20} color="#fff" style={styles.icon} />
+        <FontAwesome5 name="user-plus" size={20} color="#fff" style={styles.icon} />
         <Text style={styles.buttonText}>Registrar Usuario</Text>
       </TouchableOpacity>
 
@@ -27,7 +27,7 @@ const GestionarUsuarios: React.FC<Props> = ({ navigation }) => {
         style={styles.button}
         onPress={() => navigation.navigate('ListarUsuarios')}
       >
-        <Icon name="users" size={20} color="#fff" style={styles.icon} />
+        <FontAwesome5 name="users" size={20} color="#fff" style={styles.icon} />
         <Text style={styles.buttonText}>Ver Usuarios</Text>
       </TouchableOpacity>
     </View>

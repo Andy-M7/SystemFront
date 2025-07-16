@@ -19,12 +19,21 @@ export type RootStackParamList = {
   RegistrarUsuario: undefined;
   ActualizarUsuario: { id: number };
 
-  //Productos
- 
-  ImportarProductos: undefined;
+  // Productos
   GestionarProductos: undefined;
   RegistrarProducto: undefined;
   VisualizarCatalogo: undefined;
   EditarProducto: { codigo: string };
+  ImportarProductos: undefined;
 
+  // Solicitudes
+  GestionarSolicitudes: undefined;
+  RegistrarSolicitud: undefined;
+  AgregarProductos: { solicitud_id: number };
+  EditarSolicitud: { solicitud_id: number };
+  VisualizarSolicitudes: undefined;
+  HistorialSolicitudes: undefined;
+
+  // 🔹 Agrega esta línea:
+  DetalleSolicitud: { solicitud_id: number };
 };
