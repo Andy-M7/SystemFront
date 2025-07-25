@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,6 +20,27 @@ interface Solicitud {
   ajustada?: boolean;
 }
 
+const COLS = [
+  { key: 'id', label: 'ID', width: 60 },
+  { key: 'cliente', label: 'Cliente', width: 110 },
+  { key: 'fecha', label: 'Fecha', width: 95 },
+  { key: 'ultima_actualizacion', label: 'Actualización', width: 110 },
+  { key: 'estado', label: 'Estado', width: 90 },
+  { key: 'version', label: 'Versión', width: 65 },
+  { key: 'ajustada', label: 'Ajustada', width: 95 },
+  { key: 'pdf', label: 'PDF', width: 65 },
+];
+
+const TablaHeader = () => (
+  <View style={styles.row}>
+    {COLS.map(col => (
+      <Text key={col.key} style={[styles.cell, styles.headerCell, { width: col.width }]}>
+        {col.label}
+      </Text>
+    ))}
+  </View>
+);
+
 const HistorialSolicitudes = () => {
   const navigation = useNavigation<NavigationProp>();
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
@@ -32,7 +53,6 @@ const HistorialSolicitudes = () => {
         Alert.alert('Error', 'No se encontró sesión activa.');
         return;
       }
-
       const usuario = JSON.parse(usuarioData);
       if (!usuario.id) {
         Alert.alert('Error', 'Usuario inválido.');
@@ -66,25 +86,29 @@ const HistorialSolicitudes = () => {
 
   const renderItem = ({ item }: { item: Solicitud }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={styles.row}
+      activeOpacity={0.7}
       onPress={() => navigation.navigate('EditarSolicitud', { solicitud_id: item.id })}
     >
-      <Text style={styles.codigo}>Solicitud #{item.id}</Text>
-      <Text>Cliente: {item.cliente}</Text>
-      <Text>Fecha: {item.fecha}</Text>
-      <Text>Última actualización: {item.ultima_actualizacion}</Text>
-      <Text>Estado: {item.estado}</Text>
-      <Text>Versión: {item.version}</Text>
-      {item.ajustada && <Text style={styles.ajustada}>Ajustada por Logística</Text>}
-
-      {item.estado !== 'Pendiente' && (
-        <TouchableOpacity
-          style={styles.pdfButton}
-          onPress={() => abrirPDFSolicitud(item.id)}
-        >
-          <Text style={styles.pdfText}>Ver PDF</Text>
-        </TouchableOpacity>
-      )}
+      <Text style={[styles.cell, { width: COLS[0].width }]}>{item.id}</Text>
+      <Text style={[styles.cell, { width: COLS[1].width }]}>{item.cliente}</Text>
+      <Text style={[styles.cell, { width: COLS[2].width }]}>{item.fecha}</Text>
+      <Text style={[styles.cell, { width: COLS[3].width }]}>{item.ultima_actualizacion}</Text>
+      <Text style={[styles.cell, { width: COLS[4].width }]}>{item.estado}</Text>
+      <Text style={[styles.cell, { width: COLS[5].width }]}>{item.version}</Text>
+      <Text style={[
+        styles.cell,
+        { width: COLS[6].width, color: item.ajustada ? '#E74C3C' : '#222', fontWeight: item.ajustada ? 'bold' : 'normal'},
+      ]}>
+        {item.ajustada ? 'Sí' : ''}
+      </Text>
+      <View style={[styles.cell, { width: COLS[7].width }]}>
+        {item.estado !== 'Pendiente' &&
+          <TouchableOpacity onPress={() => abrirPDFSolicitud(item.id)} style={styles.pdfButtonMini}>
+            <Text style={styles.pdfText}>PDF</Text>
+          </TouchableOpacity>
+        }
+      </View>
     </TouchableOpacity>
   );
 
@@ -95,11 +119,16 @@ const HistorialSolicitudes = () => {
       ) : solicitudes.length === 0 ? (
         <Text style={styles.mensaje}>Aún no ha generado solicitudes de materiales</Text>
       ) : (
-        <FlatList
-          data={solicitudes}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderItem}
-        />
+        <ScrollView horizontal>
+          <View>
+            <TablaHeader />
+            <FlatList
+              data={solicitudes}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderItem}
+            />
+          </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -111,40 +140,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F4F4F4',
-    padding: 16,
+    padding: 8,
   },
-  card: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 12,
-    elevation: 2,
+  row: {
+    flexDirection: 'row',
+    borderBottomWidth: 0.5,
+    borderColor: '#DDD',
+    alignItems: 'center',
+    minHeight: 38,
+    backgroundColor: '#fff',
   },
-  codigo: {
+  cell: {
+    padding: 5,
+    textAlign: 'center',
+  },
+  headerCell: {
     fontWeight: 'bold',
-    marginBottom: 6,
+    backgroundColor: '#eef3f7',
+    fontSize: 13,
   },
-  ajustada: {
-    color: '#E74C3C',
+  pdfButtonMini: {
+    backgroundColor: '#007AFF',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    alignSelf: 'center',
+  },
+  pdfText: {
+    color: '#fff',
     fontWeight: 'bold',
-    marginTop: 4,
+    fontSize: 12,
   },
   mensaje: {
     textAlign: 'center',
     fontSize: 16,
     marginTop: 40,
     color: '#555',
-  },
-  pdfButton: {
-    marginTop: 10,
-    backgroundColor: '#007AFF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  pdfText: {
-    color: '#fff',
-    fontWeight: 'bold',
   },
 });
