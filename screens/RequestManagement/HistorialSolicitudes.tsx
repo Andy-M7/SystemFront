@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { BASE_URL } from '../conexion';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -18,6 +18,7 @@ interface Solicitud {
   version: number;
   ultima_actualizacion: string;
   ajustada?: boolean;
+  pdfDisponible?: boolean;
 }
 
 const COLS = [
@@ -62,7 +63,18 @@ const HistorialSolicitudes = () => {
       const response = await axios.get(`${BASE_URL}/api/solicitudes/historial`, {
         params: { usuario_id: usuario.id },
       });
-      setSolicitudes(response.data);
+
+      const solicitudesConPDF = await Promise.all(
+        response.data.map(async (solicitud: Solicitud) => {
+          try {
+            await axios.head(`${BASE_URL}/pdfs/solicitud_${solicitud.id}.pdf`);
+            return { ...solicitud, pdfDisponible: true };
+          } catch (error) {
+            return { ...solicitud, pdfDisponible: false };
+          }
+        })
+      );
+      setSolicitudes(solicitudesConPDF);
     } catch (error) {
       console.error('Error al obtener historial:', error);
       Alert.alert('Error', 'No se pudo obtener el historial de solicitudes');
@@ -76,7 +88,7 @@ const HistorialSolicitudes = () => {
   }, []);
 
   const abrirPDFSolicitud = async (id: number) => {
-    const url = `${BASE_URL}/api/solicitudes/${id}/pdf`;
+    const url = `${BASE_URL}/pdfs/solicitud_${id}.pdf`;
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch (error) {
@@ -85,31 +97,39 @@ const HistorialSolicitudes = () => {
   };
 
   const renderItem = ({ item }: { item: Solicitud }) => (
-    <TouchableOpacity
-      style={styles.row}
-      activeOpacity={0.7}
-      onPress={() => navigation.navigate('EditarSolicitud', { solicitud_id: item.id })}
-    >
+    <View style={styles.row}>
       <Text style={[styles.cell, { width: COLS[0].width }]}>{item.id}</Text>
       <Text style={[styles.cell, { width: COLS[1].width }]}>{item.cliente}</Text>
       <Text style={[styles.cell, { width: COLS[2].width }]}>{item.fecha}</Text>
       <Text style={[styles.cell, { width: COLS[3].width }]}>{item.ultima_actualizacion}</Text>
       <Text style={[styles.cell, { width: COLS[4].width }]}>{item.estado}</Text>
       <Text style={[styles.cell, { width: COLS[5].width }]}>{item.version}</Text>
-      <Text style={[
-        styles.cell,
-        { width: COLS[6].width, color: item.ajustada ? '#E74C3C' : '#222', fontWeight: item.ajustada ? 'bold' : 'normal'},
-      ]}>
-        {item.ajustada ? 'Sí' : ''}
+      <Text
+        style={[
+          styles.cell,
+          {
+            width: COLS[6].width,
+            color: item.ajustada ? '#E74C3C' : '#888',
+            fontWeight: item.ajustada ? 'bold' : 'normal',
+          }
+        ]}
+      >
+        {/* SIEMPRE "Sí" o "No", por defecto "No" */}
+        {item.ajustada ? 'Sí' : 'No'}
       </Text>
-      <View style={[styles.cell, { width: COLS[7].width }]}>
-        {item.estado !== 'Pendiente' &&
-          <TouchableOpacity onPress={() => abrirPDFSolicitud(item.id)} style={styles.pdfButtonMini}>
-            <Text style={styles.pdfText}>PDF</Text>
+      <View style={[styles.cell, { width: COLS[7].width, alignItems: 'center' }]}>
+        {item.pdfDisponible ? (
+          <TouchableOpacity onPress={() => abrirPDFSolicitud(item.id)} style={styles.iconPDFWrap}>
+            <Text style={styles.iconPDF}>📄</Text>
           </TouchableOpacity>
-        }
+        ) : (
+          <View style={styles.iconPDFWrap}>
+            <Text style={[styles.iconPDF, { color: '#bbb' }]}>📄</Text>
+            <Text style={styles.noPDFText}>No se ha generado</Text>
+          </View>
+        )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -137,44 +157,12 @@ const HistorialSolicitudes = () => {
 export default HistorialSolicitudes;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F4F4F4',
-    padding: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    borderBottomWidth: 0.5,
-    borderColor: '#DDD',
-    alignItems: 'center',
-    minHeight: 38,
-    backgroundColor: '#fff',
-  },
-  cell: {
-    padding: 5,
-    textAlign: 'center',
-  },
-  headerCell: {
-    fontWeight: 'bold',
-    backgroundColor: '#eef3f7',
-    fontSize: 13,
-  },
-  pdfButtonMini: {
-    backgroundColor: '#007AFF',
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    alignSelf: 'center',
-  },
-  pdfText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  mensaje: {
-    textAlign: 'center',
-    fontSize: 16,
-    marginTop: 40,
-    color: '#555',
-  },
+  container: { flex: 1, backgroundColor: '#F4F4F4', padding: 8 },
+  row: { flexDirection: 'row', borderBottomWidth: 0.5, borderColor: '#DDD', alignItems: 'center', minHeight: 38, backgroundColor: '#fff' },
+  cell: { padding: 5, textAlign: 'center' },
+  headerCell: { fontWeight: 'bold', backgroundColor: '#eef3f7', fontSize: 13 },
+  mensaje: { textAlign: 'center', fontSize: 16, marginTop: 40, color: '#555' },
+  iconPDFWrap: { alignItems: 'center', justifyContent: 'center' },
+  iconPDF: { fontSize: 22, color: '#007AFF' },
+  noPDFText: { fontSize: 9, color: '#bbb', marginTop: 2, textAlign: 'center' },
 });

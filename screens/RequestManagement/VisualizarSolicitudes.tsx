@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
+  StyleSheet,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -16,10 +16,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
 import { RootStackParamList } from '../navigation';
-import axios from 'axios';
-import { BASE_URL } from '../conexion'; // ✅ Importar la URL centralizada
+import axios, { AxiosError } from 'axios';
+import { BASE_URL } from '../conexion';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -42,30 +41,39 @@ const VisualizarSolicitudes = () => {
   const [filtroFecha, setFiltroFecha] = useState('');
   const [loading, setLoading] = useState(true);
   const [mostrarCalendario, setMostrarCalendario] = useState(false);
-const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | null>(null);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | null>(null);
+  const [enviando, setEnviando] = useState<number | null>(null);
 
-  
   const obtenerSolicitudes = async () => {
     try {
       setLoading(true);
       const usuarioData = await AsyncStorage.getItem('usuario');
-
       if (!usuarioData) {
         Alert.alert('Error', 'No se encontró sesión activa.');
         return;
       }
-
       const usuario = JSON.parse(usuarioData);
       if (!usuario.id) {
         Alert.alert('Error', 'Usuario inválido.');
         return;
       }
-
       const response = await axios.get(`${BASE_URL}/api/solicitudes/usuario/${usuario.id}`);
       setSolicitudes(response.data);
     } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError && axiosError.response) {
+        // Corrección: accede seguro a error y fallback a stringify
+        const msg =
+          (axiosError.response.data as any)?.error?.toString() ||
+          JSON.stringify(axiosError.response.data) ||
+          'No se pudieron cargar las solicitudes.';
+        Alert.alert('Error', msg);
+      } else if (axiosError && axiosError.message) {
+        Alert.alert('Error', `Error de red: ${axiosError.message}`);
+      } else {
+        Alert.alert('Error', 'No se pudieron cargar las solicitudes.');
+      }
       console.error(error);
-      Alert.alert('Error', 'No se pudieron cargar las solicitudes.');
     } finally {
       setLoading(false);
     }
@@ -76,18 +84,14 @@ const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | null>(null);
       obtenerSolicitudes();
     }, [])
   );
-  
-  // 👇 Agrega este bloque aquí mismo
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      e.preventDefault(); // Detiene la acción predeterminada
-      navigation.navigate('GestionarSolicitudes'); // Redirige a una pantalla fija
+      e.preventDefault();
+      navigation.navigate('GestionarSolicitudes');
     });
-  
-    return unsubscribe; // Limpia el listener
+    return unsubscribe;
   }, [navigation]);
-  
-  
 
   const filtrarSolicitudes = () => {
     return solicitudes.filter((s) => {
@@ -98,42 +102,111 @@ const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | null>(null);
     });
   };
 
-  const renderItem = ({ item }: { item: Solicitud }) => (
-    <View style={styles.card}>
-      <Text style={styles.label}>ID: <Text style={styles.value}>{item.id}</Text></Text>
-      <Text style={styles.label}>Cliente: <Text style={styles.value}>{item.cliente}</Text></Text>
-      <Text style={styles.label}>Fecha: <Text style={styles.value}>{item.fecha}</Text></Text>
-      <Text style={styles.label}>Estado: <Text style={styles.value}>{item.estado}</Text></Text>
-      <Text style={styles.label}>Versión: <Text style={styles.value}>{item.version}</Text></Text>
+  // ----------- Enviar a logística ------------
+  const enviarALogistica = async (id: number) => {
+    Alert.alert(
+      'Enviar a Logística',
+      '¿Está seguro que desea enviar esta solicitud a Logística?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Enviar',
+          style: 'destructive',
+          onPress: async () => {
+            setEnviando(id);
+            try {
+              await axios.post(`${BASE_URL}/api/solicitudes/${id}/enviar_logistica`);
+              await obtenerSolicitudes();
+              Alert.alert('Enviado', 'La solicitud fue enviada a logística.');
+            } catch (error) {
+              const axiosError = error as AxiosError;
+              if (axiosError && axiosError.response) {
+                const msg =
+                  (axiosError.response.data as any)?.error?.toString() ||
+                  JSON.stringify(axiosError.response.data) ||
+                  'No se pudo enviar.';
+                Alert.alert('Error', msg);
+              } else if (axiosError && axiosError.message) {
+                Alert.alert('Error', axiosError.message);
+              } else {
+                Alert.alert('Error', 'Error desconocido.');
+              }
+              console.error(error);
+            } finally {
+              setEnviando(null);
+            }
+          },
+        },
+      ]
+    );
+  };
 
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.button, styles.viewButton]}
-          onPress={() => navigation.navigate('DetalleSolicitud', { solicitud_id: item.id })}
-        >
-          <Text style={styles.buttonText}>Ver</Text>
-        </TouchableOpacity>
+  // ----------- Render de cada tarjeta --------------
+  const renderItem = ({ item }: { item: Solicitud }) => {
+    const estadoLower = item.estado?.toLowerCase();
+    const enviada = estadoLower === 'enviada' || estadoLower === 'aprobada' || estadoLower === 'rechazada';
 
-        {item.estado === 'Pendiente' && (
-          <>
-            <TouchableOpacity
-              style={[styles.button, styles.editButton]}
-              onPress={() => navigation.navigate('EditarSolicitud', { solicitud_id: item.id })}
-            >
-              <Text style={styles.buttonText}>Editar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.button, styles.addButton]}
-              onPress={() => navigation.navigate('AgregarProductos', { solicitud_id: item.id })}
-            >
-              <Text style={styles.buttonText}>Agregar Productos</Text>
-            </TouchableOpacity>
-          </>
-        )}
+    return (
+      <View style={styles.card}>
+        <Text style={styles.label}>ID: <Text style={styles.value}>{item.id}</Text></Text>
+        <Text style={styles.label}>Cliente: <Text style={styles.value}>{item.cliente}</Text></Text>
+        <Text style={styles.label}>Fecha: <Text style={styles.value}>{item.fecha}</Text></Text>
+        <Text style={styles.label}>Estado: <Text style={styles.value}>{item.estado}</Text></Text>
+        <Text style={styles.label}>Versión: <Text style={styles.value}>{item.version}</Text></Text>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.button, styles.viewButton]}
+            onPress={() => navigation.navigate('DetalleSolicitud', { solicitud_id: item.id })}
+          >
+            <Text style={styles.buttonText}>Ver</Text>
+          </TouchableOpacity>
+          {!enviada && (
+            <>
+              <TouchableOpacity
+                style={[styles.button, styles.editButton]}
+                onPress={() => navigation.navigate('EditarSolicitud', { solicitud_id: item.id })}
+              >
+                <Text style={styles.buttonText}>Editar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.addButton]}
+                onPress={() => navigation.navigate('AgregarProductos', { solicitud_id: item.id })}
+              >
+                <Text style={styles.buttonText}>Agregar Productos</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.sendButton,
+              enviada && styles.buttonEnviado,
+              enviando === item.id && { backgroundColor: '#bbb' },
+            ]}
+            disabled={enviada || enviando === item.id}
+            onPress={() => {
+              if (!enviada) enviarALogistica(item.id);
+            }}
+          >
+            <Text style={styles.sendIcon}>
+              {enviando === item.id
+                ? "⏳"
+                : enviada
+                ? "🚚"
+                : "📤"}
+            </Text>
+            <Text style={styles.buttonText}>
+              {enviando === item.id
+                ? 'Enviando...'
+                : enviada
+                ? 'Solicitud ya fue enviada'
+                : 'Enviar a Logística'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -145,14 +218,13 @@ const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | null>(null);
         style={styles.input}
       />
 
-
       <Text style={styles.label}>Filtrar por Estado:</Text>
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={filtroEstado}
-          onValueChange={(itemValue) => setFiltroEstado(itemValue)}
+          onValueChange={(val) => setFiltroEstado(val)}
           style={styles.picker}
-          dropdownIconColor="#007AFF" // Para Android
+          dropdownIconColor="#007AFF"
         >
           <Picker.Item label="Todos los estados" value="" />
           <Picker.Item label="Pendiente" value="pendiente" />
@@ -162,34 +234,27 @@ const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | null>(null);
         </Picker>
       </View>
 
-
-
-
       <Text style={styles.label}>Filtrar por Fecha:</Text>
-        <TouchableOpacity
-          onPress={() => setMostrarCalendario(true)}
-          style={styles.input}
-        >
-          <Text>{fechaSeleccionada ? fechaSeleccionada.toISOString().split('T')[0] : 'Seleccionar fecha'}</Text>
-        </TouchableOpacity>
-
-        {mostrarCalendario && (
-          <DateTimePicker
-            value={fechaSeleccionada || new Date()}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(event, selectedDate) => {
-              setMostrarCalendario(false);
-              if (selectedDate) {
-                setFechaSeleccionada(selectedDate);
-                setFiltroFecha(selectedDate.toISOString().split('T')[0]); // actualiza el filtro real
-              }
-            }}
-          />
-        )}
-
-
-  
+      <TouchableOpacity
+        onPress={() => setMostrarCalendario(true)}
+        style={styles.input}
+      >
+        <Text>{fechaSeleccionada ? fechaSeleccionada.toISOString().split('T')[0] : 'Seleccionar fecha'}</Text>
+      </TouchableOpacity>
+      {mostrarCalendario && (
+        <DateTimePicker
+          value={fechaSeleccionada || new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(event, selectedDate) => {
+            setMostrarCalendario(false);
+            if (selectedDate) {
+              setFechaSeleccionada(selectedDate);
+              setFiltroFecha(selectedDate.toISOString().split('T')[0]);
+            }
+          }}
+        />
+      )}
       {loading ? (
         <ActivityIndicator size="large" color="#007AFF" />
       ) : filtrarSolicitudes().length === 0 ? (
@@ -213,22 +278,16 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f9f9f9',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 14,
-    textAlign: 'center',
-  },
   input: {
     backgroundColor: '#fff',
     paddingHorizontal: 12,
-    height: 48, // ← asegura altura igual al picker
+    height: 48,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ccc',
     marginBottom: 10,
-    justifyContent: 'center', // centra el texto verticalmente
-  },  
+    justifyContent: 'center',
+  },
   card: {
     backgroundColor: '#fff',
     borderRadius: 10,
@@ -251,6 +310,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
     marginTop: 12,
+    alignItems: 'center',
   },
   button: {
     paddingVertical: 8,
@@ -258,6 +318,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginLeft: 10,
     marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   viewButton: {
     backgroundColor: '#007AFF',
@@ -267,6 +329,16 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: '#28a745',
+  },
+  sendButton: {
+    backgroundColor: '#6c63ff',
+  },
+  buttonEnviado: {
+    backgroundColor: '#cccccc',
+  },
+  sendIcon: {
+    fontSize: 21,
+    marginRight: 6,
   },
   buttonText: {
     color: '#fff',
@@ -284,15 +356,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     marginBottom: 10,
-    height: 48, // espacio suficiente para el texto
+    height: 48,
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
-  
   picker: {
     width: '100%',
     height: '100%',
-    color: '#000', // asegúrate que el texto sea visible
+    color: '#000',
   },
-  
 });
