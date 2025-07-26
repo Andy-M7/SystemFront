@@ -8,14 +8,13 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Platform } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { useFocusEffect } from '@react-navigation/native';
+import DropDownPicker from 'react-native-dropdown-picker';
 import { RootStackParamList } from '../navigation';
 import axios, { AxiosError } from 'axios';
 import { BASE_URL } from '../conexion';
@@ -44,6 +43,16 @@ const VisualizarSolicitudes = () => {
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | null>(null);
   const [enviando, setEnviando] = useState<number | null>(null);
 
+  // Dropdown
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState([
+    { label: 'Todos', value: '' },
+    { label: 'Pendiente', value: 'pendiente' },
+    { label: 'Enviada', value: 'enviada' },
+    { label: 'Aprobada', value: 'aprobada' },
+    { label: 'Rechazada', value: 'rechazada' },
+  ]);
+
   const obtenerSolicitudes = async () => {
     try {
       setLoading(true);
@@ -61,18 +70,11 @@ const VisualizarSolicitudes = () => {
       setSolicitudes(response.data);
     } catch (error) {
       const axiosError = error as AxiosError;
-      if (axiosError && axiosError.response) {
-        // Corrección: accede seguro a error y fallback a stringify
-        const msg =
-          (axiosError.response.data as any)?.error?.toString() ||
-          JSON.stringify(axiosError.response.data) ||
-          'No se pudieron cargar las solicitudes.';
-        Alert.alert('Error', msg);
-      } else if (axiosError && axiosError.message) {
-        Alert.alert('Error', `Error de red: ${axiosError.message}`);
-      } else {
-        Alert.alert('Error', 'No se pudieron cargar las solicitudes.');
-      }
+      const msg =
+        (axiosError.response?.data as any)?.error?.toString() ||
+        JSON.stringify(axiosError.response?.data) ||
+        'No se pudieron cargar las solicitudes.';
+      Alert.alert('Error', msg);
       console.error(error);
     } finally {
       setLoading(false);
@@ -102,7 +104,6 @@ const VisualizarSolicitudes = () => {
     });
   };
 
-  // ----------- Enviar a logística ------------
   const enviarALogistica = async (id: number) => {
     Alert.alert(
       'Enviar a Logística',
@@ -120,17 +121,11 @@ const VisualizarSolicitudes = () => {
               Alert.alert('Enviado', 'La solicitud fue enviada a logística.');
             } catch (error) {
               const axiosError = error as AxiosError;
-              if (axiosError && axiosError.response) {
-                const msg =
-                  (axiosError.response.data as any)?.error?.toString() ||
-                  JSON.stringify(axiosError.response.data) ||
-                  'No se pudo enviar.';
-                Alert.alert('Error', msg);
-              } else if (axiosError && axiosError.message) {
-                Alert.alert('Error', axiosError.message);
-              } else {
-                Alert.alert('Error', 'Error desconocido.');
-              }
+              const msg =
+                (axiosError.response?.data as any)?.error?.toString() ||
+                JSON.stringify(axiosError.response?.data) ||
+                'No se pudo enviar.';
+              Alert.alert('Error', msg);
               console.error(error);
             } finally {
               setEnviando(null);
@@ -141,7 +136,6 @@ const VisualizarSolicitudes = () => {
     );
   };
 
-  // ----------- Render de cada tarjeta --------------
   const renderItem = ({ item }: { item: Solicitud }) => {
     const estadoLower = item.estado?.toLowerCase();
     const enviada = estadoLower === 'enviada' || estadoLower === 'aprobada' || estadoLower === 'rechazada';
@@ -219,20 +213,18 @@ const VisualizarSolicitudes = () => {
       />
 
       <Text style={styles.label}>Filtrar por Estado:</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={filtroEstado}
-          onValueChange={(val) => setFiltroEstado(val)}
-          style={styles.picker}
-          dropdownIconColor="#007AFF"
-        >
-          <Picker.Item label="Todos los estados" value="" />
-          <Picker.Item label="Pendiente" value="pendiente" />
-          <Picker.Item label="Enviada" value="enviada" />
-          <Picker.Item label="Aprobada" value="aprobada" />
-          <Picker.Item label="Rechazada" value="rechazada" />
-        </Picker>
-      </View>
+      <DropDownPicker
+        open={open}
+        value={filtroEstado}
+        items={items}
+        setOpen={setOpen}
+        setValue={setFiltroEstado}
+        setItems={setItems}
+        style={styles.dropdown}
+        dropDownContainerStyle={{ borderColor: '#ccc' }}
+        placeholder="Selecciona estado"
+        zIndex={1000}
+      />
 
       <Text style={styles.label}>Filtrar por Fecha:</Text>
       <TouchableOpacity
@@ -287,6 +279,10 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     marginBottom: 10,
     justifyContent: 'center',
+  },
+  dropdown: {
+    marginBottom: 10,
+    borderColor: '#ccc',
   },
   card: {
     backgroundColor: '#fff',
@@ -349,20 +345,5 @@ const styles = StyleSheet.create({
     color: '#777',
     marginTop: 30,
     fontSize: 16,
-  },
-  pickerContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    marginBottom: 10,
-    height: 48,
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  picker: {
-    width: '100%',
-    height: '100%',
-    color: '#000',
   },
 });
