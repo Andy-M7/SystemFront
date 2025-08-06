@@ -36,4 +36,7 @@ export type RootStackParamList = {
 
   // 🔹 Agrega esta línea:
   DetalleSolicitud: { solicitud_id: number };
+
+  //Lógistica
+  GestionarLogistica: undefined;
 };

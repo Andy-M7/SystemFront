@@ -38,8 +38,12 @@ import AgregarProductos from './screens/RequestManagement/AgregarProductos';
 import EditarSolicitud from './screens/RequestManagement/EditarSolicitud';
 import VisualizarSolicitudes from './screens/RequestManagement/VisualizarSolicitudes';
 import HistorialSolicitudes from './screens/RequestManagement/HistorialSolicitudes';
-import DetalleSolicitud from './screens/RequestManagement/DetalleSolicitud'; // ✅ Nueva
+import DetalleSolicitud from './screens/RequestManagement/DetalleSolicitud';
 
+// Logística
+import GestionarLogistica from './screens/LogisticsManagement/GestionarLogistica'; 
+
+// Login
 import Login from './screens/Login';
 
 export type RootStackParamList = {
@@ -80,7 +84,10 @@ export type RootStackParamList = {
   EditarSolicitud: { solicitud_id: number };
   VisualizarSolicitudes: undefined;
   HistorialSolicitudes: undefined;
-  DetalleSolicitud: { solicitud_id: number }; // ✅ Nueva
+  DetalleSolicitud: { solicitud_id: number };
+
+  // Logística
+  GestionarLogistica: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -90,7 +97,7 @@ const App = () => {
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login">
         <Stack.Screen name="Login" component={Login} options={{ title: 'Grupo Bax' }} />
-        <Stack.Screen name="Dashboard"component={Dashboard}options={{ headerShown: false }} />
+        <Stack.Screen name="Dashboard" component={Dashboard} options={{ headerShown: false }} />
 
         {/* Empleados */}
         <Stack.Screen name="GestionarEmpleados" component={GestionarEmpleados} options={{ title: 'Gestionar Empleados' }} />
@@ -126,6 +133,9 @@ const App = () => {
         <Stack.Screen name="VisualizarSolicitudes" component={VisualizarSolicitudes} options={{ title: 'Visualizar Solicitudes' }} />
         <Stack.Screen name="HistorialSolicitudes" component={HistorialSolicitudes} options={{ title: 'Historial de Solicitudes' }} />
         <Stack.Screen name="DetalleSolicitud" component={DetalleSolicitud} options={{ title: 'Detalle de Solicitud' }} />
+
+        {/* Logística */}
+        <Stack.Screen name="GestionarLogistica" component={GestionarLogistica} options={{ title: 'Gestionar Logística' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

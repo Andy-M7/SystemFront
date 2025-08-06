@@ -20,20 +20,18 @@ import logo from '../assets/logo.png';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
 
-
 const Dashboard = () => {
   const navigation = useNavigation<NavigationProp>();
-  const ignoreBeforeRemove = useRef(false); // ← importante
+  const ignoreBeforeRemove = useRef(false);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       e.preventDefault();
-      navigation.navigate('Login'); // <- Cambia a tu pantalla de inicio deseada
+      navigation.navigate('Login');
     });
 
     return unsubscribe;
   }, [navigation]);
-
 
   const handleLogout = () => {
     Alert.alert('Cerrar Sesión', '¿Estás seguro que deseas cerrar sesión?', [
@@ -43,7 +41,7 @@ const Dashboard = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            ignoreBeforeRemove.current = true; // permite salir limpiamente
+            ignoreBeforeRemove.current = true;
             await AsyncStorage.removeItem('usuario');
             navigation.reset({
               index: 0,
@@ -56,9 +54,6 @@ const Dashboard = () => {
       },
     ]);
   };
-  
-  
-
 
   return (
     <View style={styles.container}>
@@ -74,7 +69,6 @@ const Dashboard = () => {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.subtitle}>Bienvenido a la aplicación</Text>
-
 
         <TouchableOpacity
           style={[styles.button, styles.greenButton]}
@@ -116,11 +110,18 @@ const Dashboard = () => {
           <Text style={styles.buttonText}>Gestionar Solicitudes</Text>
         </TouchableOpacity>
 
+        {/* NUEVO BOTÓN PARA LOGÍSTICA */}
+        <TouchableOpacity
+          style={[styles.button, styles.tealButton]}
+          onPress={() => navigation.navigate('GestionarLogistica')}
+        >
+          <Ionicons name="trail-sign-outline" size={24} color="#fff" style={styles.icon} />
+          <Text style={styles.buttonText}>Gestionar Logística</Text>
+        </TouchableOpacity>
 
         <View style={styles.logoContainer}>
           <Image source={logo} style={styles.logoLarge} resizeMode="contain" />
         </View>
-
       </ScrollView>
     </View>
   );
@@ -133,7 +134,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f2f2f2'
   },
-
   header: {
     paddingTop: 15,
     paddingBottom: 15,
@@ -144,7 +144,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     elevation: 4,
   },
-
   title: {
     fontSize: 26,
     fontWeight: 'bold',
@@ -177,24 +176,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2
   },
-  greenButton: {
-    backgroundColor: '#34C759',
-  },
-  orangeButton: {
-    backgroundColor: '#FF9500',
-  },
-  blueButton: {
-    backgroundColor: '#007AFF',
-  },
-  purpleButton: {
-    backgroundColor: '#8E44AD',
-  },
-  brownButton: {
-    backgroundColor: '#A0522D',
-  },
-  icon: {
-    marginRight: 12,
-  },
+  greenButton: { backgroundColor: '#34C759' },
+  orangeButton: { backgroundColor: '#FF9500' },
+  blueButton: { backgroundColor: '#007AFF' },
+  purpleButton: { backgroundColor: '#8E44AD' },
+  brownButton: { backgroundColor: '#A0522D' },
+  tealButton: { backgroundColor: '#20B2AA' }, // NUEVO COLOR PARA LOGÍSTICA
+  icon: { marginRight: 12 },
   buttonText: {
     color: '#fff',
     fontWeight: '600',
