@@ -42,9 +42,11 @@ import DetalleSolicitud from './screens/RequestManagement/DetalleSolicitud';
 
 // Logística
 import GestionarLogistica from './screens/LogisticsManagement/GestionarLogistica'; 
+import SolicitudesPendientesLogistica from './screens/LogisticsManagement/SolicitudesPendientesLogistica';
 
 // Login
 import Login from './screens/Login';
+
 
 export type RootStackParamList = {
   Login: undefined;
@@ -88,6 +90,7 @@ export type RootStackParamList = {
 
   // Logística
   GestionarLogistica: undefined;
+  SolicitudesPendientesLogistica: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -136,6 +139,7 @@ const App = () => {
 
         {/* Logística */}
         <Stack.Screen name="GestionarLogistica" component={GestionarLogistica} options={{ title: 'Gestionar Logística' }} />
+        <Stack.Screen name="SolicitudesPendientesLogistica" component={SolicitudesPendientesLogistica} options={{ title: 'Solicitudes Pendientes Logistica' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

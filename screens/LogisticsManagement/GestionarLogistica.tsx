@@ -15,43 +15,16 @@ const GestionarLogistica: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Gestión de Logística</Text>
 
-      {/* SDSM-40: Visualizar Solicitudes pendientes */}
+      {/* Visualizar Solicitudes Pendientes */}
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('VisualizarSolicitudes')}
+        onPress={() => navigation.navigate('SolicitudesPendientesLogistica')}
       >
         <Ionicons name="document-text-outline" size={22} color="#fff" style={styles.icon} />
         <Text style={styles.buttonText}>Visualizar Solicitudes Pendientes</Text>
       </TouchableOpacity>
 
-      {/* SDSM-42: Editar solicitud (ajuste de cantidades) */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('EditarSolicitud', { solicitud_id: 0 })} // Parámetro temporal
-      >
-        <Ionicons name="create-outline" size={22} color="#fff" style={styles.icon} />
-        <Text style={styles.buttonText}>Editar Solicitud (Ajuste de Cantidades)</Text>
-      </TouchableOpacity>
-
-      {/* SDSM-41: Cambiar estado de solicitud */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('VisualizarSolicitudes')}
-      >
-        <Ionicons name="swap-horizontal-outline" size={22} color="#fff" style={styles.icon} />
-        <Text style={styles.buttonText}>Cambiar Estado de Solicitud</Text>
-      </TouchableOpacity>
-
-      {/* SDSM-44: Filtrar solicitudes */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('VisualizarSolicitudes')}
-      >
-        <Ionicons name="funnel-outline" size={22} color="#fff" style={styles.icon} />
-        <Text style={styles.buttonText}>Filtrar Solicitudes (Cliente/Fecha/Estado)</Text>
-      </TouchableOpacity>
-
-      {/* SDSM-43: Generar reporte por estado */}
+      {/* Generar Reporte por Estado */}
       <TouchableOpacity
         style={styles.button}
         onPress={() => navigation.navigate('HistorialSolicitudes')}
