@@ -40,4 +40,5 @@ export type RootStackParamList = {
   //Lógistica
   GestionarLogistica: undefined;
   SolicitudesPendientesLogistica: undefined;
+  GenerarReporteEstado: undefined;
 };

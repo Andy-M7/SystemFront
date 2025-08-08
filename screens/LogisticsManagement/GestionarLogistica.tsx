@@ -27,7 +27,7 @@ const GestionarLogistica: React.FC<Props> = ({ navigation }) => {
       {/* Generar Reporte por Estado */}
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('HistorialSolicitudes')}
+        onPress={() => navigation.navigate('GenerarReporteEstado')}
       >
         <Ionicons name="bar-chart-outline" size={22} color="#fff" style={styles.icon} />
         <Text style={styles.buttonText}>Generar Reporte por Estado</Text>

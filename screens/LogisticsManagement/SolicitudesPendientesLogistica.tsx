@@ -19,24 +19,30 @@ type Solicitud = {
 
 type DetalleItem = {
   id: number;
-  producto_codigo: string;
+  producto: string; // El nombre del producto que envía el backend
   cantidad: number;
   observacion: string | null;
 };
 
 // Endpoints
 const LOGISTICA_ENDPOINT = `${BASE_URL}/api/solicitudes/logistica`;
-const DETALLE_ENDPOINT = (solicitudId: number | string): string => `${BASE_URL}/api/solicitudes/detalle/${solicitudId}`;
-const EDIT_DETALLE_LOG = (detalleId: number | string): string => `${BASE_URL}/api/solicitudes/logistica/detalle/${detalleId}`;
-const APROBAR_SOLICITUD = (solicitudId: number | string): string => `${BASE_URL}/api/solicitudes/${solicitudId}/aprobar`;
+const DETALLE_ENDPOINT = (solicitudId: number | string): string =>
+  `${BASE_URL}/api/solicitudes/detalle/${solicitudId}`;
+const EDIT_DETALLE_LOG = (detalleId: number | string): string =>
+  `${BASE_URL}/api/solicitudes/logistica/detalle/${detalleId}`;
+const APROBAR_SOLICITUD = (solicitudId: number | string): string =>
+  `${BASE_URL}/api/solicitudes/${solicitudId}/aprobar`;
+const RECHAZAR_SOLICITUD = (solicitudId: number | string): string =>
+  `${BASE_URL}/api/solicitudes/${solicitudId}/rechazar`;
 
+// Opciones de estado para filtros y mostrar
 const ESTADOS = [
   { value: 'Enviada', label: 'Enviada' },
   { value: 'Aprobada', label: 'Aprobada' },
   { value: 'Rechazada', label: 'Rechazada' }
 ];
 
-// Props para modal detalle solicitud (sin onAdded ni onDeleted)
+// Props modal detalle solicitud
 interface DetalleSolicitudModalProps {
   visible: boolean;
   onClose: () => void;
@@ -63,7 +69,10 @@ const SolicitudesPendientesLogistica: React.FC<{ navigation: any }> = ({ navigat
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   const clienteFilterRef = useRef<string>(cliente);
-  useEffect(() => { clienteFilterRef.current = cliente; }, [cliente]);
+  useEffect(() => {
+    clienteFilterRef.current = cliente;
+  }, [cliente]);
+
   useEffect(() => {
     const t = setTimeout(() => {
       if (clienteFilterRef.current === cliente) cargarSolicitudes();
@@ -81,8 +90,6 @@ const SolicitudesPendientesLogistica: React.FC<{ navigation: any }> = ({ navigat
       if (fechaInicio) url += `fecha_ini=${encodeURIComponent(fechaInicio)}&`;
       if (fechaFin) url += `fecha_fin=${encodeURIComponent(fechaFin)}&`;
       url = url.endsWith('&') ? url.slice(0, -1) : url;
-
-      console.log('Fetching solicitudes con URL:', url);
 
       const resp = await fetch(url);
       if (!resp.ok) {
@@ -223,15 +230,12 @@ const SolicitudesPendientesLogistica: React.FC<{ navigation: any }> = ({ navigat
   );
 };
 
-
 const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
   visible, onClose, solicitud, items, loading, subtotal,
   formatFecha, onEdited, onApproved
 }) => {
   const [err, setErr] = useState<string>('');
   const editable = solicitud?.estado === 'Enviada';
-
-  // Eliminamos estados y funciones para agregar y eliminar productos porque no se usarán
 
   const editItem = async (detalleId: number, newCantidad: string, newObs: string) => {
     if (!Number.isFinite(Number(newCantidad)) || Number(newCantidad) <= 0) {
@@ -272,6 +276,25 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
     ]);
   };
 
+  const rejectSolicitud = async () => {
+    Alert.alert('Rechazar solicitud', '¿Confirmas rechazar esta solicitud?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Rechazar',
+        onPress: async () => {
+          try {
+            const resp = await fetch(RECHAZAR_SOLICITUD(solicitud!.id), { method: 'POST' });
+            const data = await safeJson(resp);
+            if (!resp.ok) throw new Error(data?.message || 'No se pudo rechazar la solicitud');
+            onApproved && onApproved(); // Para recargar la lista y cerrar modal
+          } catch (e: any) {
+            Alert.alert('Error', e.message || 'No se pudo rechazar');
+          }
+        }
+      }
+    ]);
+  };
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -304,7 +327,6 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
                       item={item}
                       editable={editable}
                       onSave={(cant, obs) => editItem(item.id, cant, obs)}
-                      // No pasamos onDelete porque no se podrá eliminar
                       onDelete={() => { /* no-op */ }}
                     />
                   )}
@@ -322,9 +344,14 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
                   <Button title="Cerrar" onPress={onClose} color="#8E8E93" />
                 </View>
                 {editable ? (
-                  <View style={{ flex: 1 }}>
-                    <Button title="Aprobar" color="#34C759" onPress={approveSolicitud} />
-                  </View>
+                  <>
+                    <View style={{ flex: 1 }}>
+                      <Button title="Rechazar" color="#FF3B30" onPress={rejectSolicitud} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Button title="Aprobar" color="#34C759" onPress={approveSolicitud} />
+                    </View>
+                  </>
                 ) : null}
               </View>
             </>
@@ -335,12 +362,12 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
   );
 };
 
-// Actualizamos ItemDetalleRow para eliminar botón eliminar y dejar solo editar
+// ItemDetalleRow sin botón eliminar, solo edición
 interface ItemDetalleRowProps {
   item: DetalleItem;
   editable: boolean;
   onSave: (cantidad: string, observacion: string) => Promise<void>;
-  onDelete?: () => void; // opcional, lo ignoramos
+  onDelete?: () => void; // opcional, ignorado
 }
 
 const ItemDetalleRow: React.FC<ItemDetalleRowProps> = ({ item, editable, onSave }) => {
@@ -361,7 +388,7 @@ const ItemDetalleRow: React.FC<ItemDetalleRowProps> = ({ item, editable, onSave 
   return (
     <View style={styles.rowItem}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.rowTitle}>{item.producto_codigo}</Text>
+        <Text style={styles.rowTitle}>{item.producto}</Text>
         <Text style={styles.rowSub}>Detalle ID: {item.id}</Text>
       </View>
       <View style={{ width: 90 }}>
@@ -512,4 +539,5 @@ const styles = StyleSheet.create({
 });
 
 export default SolicitudesPendientesLogistica;
+
 
