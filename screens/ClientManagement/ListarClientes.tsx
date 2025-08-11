@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
-import axios from 'axios';
-import { BASE_URL } from '../conexion'; // ✅ NUEVO
+import axios, { AxiosError } from 'axios';
+import { BASE_URL } from '../conexion';
 
 type Cliente = {
   id: number;
@@ -20,7 +20,7 @@ type Cliente = {
   documento: string;
   direccion: string;
   telefono: string;
-  estado: string;
+  estado?: string; // opcional por si no viene en el GET
 };
 
 const ListarClientes = ({ navigation }: any) => {
@@ -49,6 +49,32 @@ const ListarClientes = ({ navigation }: any) => {
     }
   };
 
+  // 🔎 (opcional) sanitizar búsqueda: letras (con acentos), números y espacios
+  const onChangeFiltro = (text: string) => {
+    const limpio = text.replace(/[^a-zA-ZÀ-ÿ0-9\s]/g, '');
+    setFiltro(limpio);
+  };
+
+  // ✅ pre-chequeo (opcional) antes de eliminar
+  const puedeEliminarCliente = async (id: number) => {
+    try {
+      const { data } = await axios.get(`${BASE_URL}/api/clientes/pendientes`, {
+        params: { cliente_id: id },
+      });
+      if (data?.tienePendientes) {
+        Alert.alert(
+          'No permitido',
+          `Este cliente tiene ${data.total} solicitud(es) pendientes. No puede eliminarse.`
+        );
+        return false;
+      }
+      return true;
+    } catch (_e) {
+      // si falla el endpoint, dejamos que decida el DELETE (backend igual valida)
+      return true;
+    }
+  };
+
   const eliminarCliente = (id: number) => {
     Alert.alert('Eliminar Cliente', '¿Estás seguro de eliminar este cliente?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -56,13 +82,29 @@ const ListarClientes = ({ navigation }: any) => {
         text: 'Eliminar',
         style: 'destructive',
         onPress: async () => {
+          // 1) pre-chequeo (opcional)
+          const ok = await puedeEliminarCliente(id);
+          if (!ok) return;
+
+          // 2) intentar eliminar (backend es la fuente de la verdad)
           try {
             await axios.delete(`${BASE_URL}/api/clientes/${id}`);
             Alert.alert('Éxito', 'Cliente eliminado correctamente');
             obtenerClientes();
           } catch (error) {
-            console.error(error);
-            Alert.alert('Error', 'No se pudo eliminar el cliente.');
+            const err = error as AxiosError<any>;
+            const status = err.response?.status;
+            const mensajeBackend =
+              err.response?.data?.mensaje ||
+              err.response?.data?.error ||
+              'No se pudo eliminar el cliente.';
+
+            if (status === 409) {
+              // Caso bloqueado por solicitudes pendientes
+              Alert.alert('No permitido', mensajeBackend);
+            } else {
+              Alert.alert('Error', mensajeBackend);
+            }
           }
         },
       },
@@ -70,13 +112,14 @@ const ListarClientes = ({ navigation }: any) => {
   };
 
   const filtrarYOrdenarClientes = () => {
-    let lista = clientes;
+    let lista = [...clientes];
 
     if (filtro) {
       const texto = filtro.toLowerCase();
-      lista = lista.filter(c =>
-        c.nombre_razon_social.toLowerCase().includes(texto) ||
-        c.documento.includes(texto)
+      lista = lista.filter(
+        (c) =>
+          c.nombre_razon_social.toLowerCase().includes(texto) ||
+          c.documento.includes(texto)
       );
     }
 
@@ -101,7 +144,7 @@ const ListarClientes = ({ navigation }: any) => {
         style={styles.searchInput}
         placeholder="Buscar por nombre, DNI o RUC..."
         value={filtro}
-        onChangeText={setFiltro}
+        onChangeText={onChangeFiltro}
       />
 
       <View style={styles.sortContainer}>

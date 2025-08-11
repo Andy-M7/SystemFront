@@ -9,7 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { BASE_URL } from '../conexion'; // ✅ Importar BASE_URL
@@ -54,15 +54,57 @@ const VisualizarCatalogo = () => {
     cargarProductos().finally(() => setRefreshing(false));
   };
 
-  const cambiarEstado = async (codigo: string, estadoActual: string) => {
-    const nuevoEstado = estadoActual === 'Activo' ? 'Inactivo' : 'Activo';
+  // 🔎 (Opcional) Sanitizar búsqueda: solo letras (con acentos), números y espacios
+  const onChangeBusqueda = (text: string) => {
+    const limpio = text.replace(/[^a-zA-ZÀ-ÿ0-9\s]/g, '');
+    setBusqueda(limpio);
+  };
+
+  // ✅ Chequear si tiene solicitudes pendientes antes de inactivar
+  const chequearPendientes = async (codigo: string): Promise<{ bloqueado: boolean; total?: number }> => {
     try {
-      await axios.put(`${BASE_URL}/api/productos/estado/${codigo}`, {
-        estado: nuevoEstado,
-      });
+      const url = `${BASE_URL}/api/solicitudes/pendientes?producto_codigo=${encodeURIComponent(codigo)}`;
+      const res = await axios.get(url);
+      // Se espera { tienePendientes: boolean, total?: number }
+      const tienePendientes = !!res.data?.tienePendientes;
+      const total = typeof res.data?.total === 'number' ? res.data.total : undefined;
+      return { bloqueado: tienePendientes, total };
+    } catch (_e) {
+      // Si el endpoint no existe o falla, devolvemos "desconocido" -> que decida el PUT
+      return { bloqueado: false };
+    }
+  };
+
+  const cambiarEstado = async (codigo: string, estadoActual: string) => {
+    const vaAInactivar = estadoActual === 'Activo';
+    if (vaAInactivar) {
+      // 1) Pre-chequeo
+      const res = await chequearPendientes(codigo);
+      if (res.bloqueado) {
+        Alert.alert(
+          'No permitido',
+          `Este producto tiene solicitudes pendientes${res.total ? ` (${res.total})` : ''}. No puede inactivarse.`
+        );
+        return;
+      }
+    }
+
+    // 2) Intentar cambio de estado (el backend debe validar definitivamente)
+    const nuevoEstado = vaAInactivar ? 'Inactivo' : 'Activo';
+    try {
+      await axios.put(`${BASE_URL}/api/productos/estado/${codigo}`, { estado: nuevoEstado });
       cargarProductos();
     } catch (err) {
-      Alert.alert('Error', 'No se pudo cambiar el estado del producto.');
+      const axErr = err as AxiosError<any>;
+      const status = axErr.response?.status;
+      const mensajeBackend = axErr.response?.data?.mensaje || axErr.response?.data?.error;
+
+      if (vaAInactivar && (status === 409 || status === 400)) {
+        // Backend negó por tener pendientes u otra regla
+        Alert.alert('No permitido', mensajeBackend || 'El producto no puede inactivarse porque tiene solicitudes pendientes.');
+      } else {
+        Alert.alert('Error', mensajeBackend || 'No se pudo cambiar el estado del producto.');
+      }
     }
   };
 
@@ -117,7 +159,7 @@ const VisualizarCatalogo = () => {
         style={styles.input}
         placeholder="Buscar por nombre o código"
         value={busqueda}
-        onChangeText={setBusqueda}
+        onChangeText={onChangeBusqueda}
       />
 
       {mensaje ? (

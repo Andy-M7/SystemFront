@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { BASE_URL } from '../conexion';
 
+type Empleado = {
+  id: number;
+  nombres: string;
+  cargo: string;
+  estado?: string; // 'Activo' | 'Inactivo'
+  activo?: number; // 1 | 0  (por si usas flag numérico)
+};
+
 const RegistrarUsuario = () => {
-  const [empleados, setEmpleados] = useState<any[]>([]);
+  const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState<number | undefined>(undefined);
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -15,14 +23,39 @@ const RegistrarUsuario = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // 🔽 Carga de empleados solo ACTIVOS (con fallback a filtrado en front)
   useEffect(() => {
-    axios.get(`${BASE_URL}/empleados`)
-      .then(response => setEmpleados(response.data))
-      .catch(error => console.error("Error al obtener empleados", error));
+    const cargarEmpleadosActivos = async () => {
+      try {
+        // 1) Intenta con query param (si tu backend lo soporta)
+        const res = await axios.get(`${BASE_URL}/empleados`, { params: { estado: 'Activo' } });
+        const data: Empleado[] = Array.isArray(res.data) ? res.data : [];
+        // 2) Filtro extra por si llega mezcla
+        const activos = data.filter(
+          (e) => (e.estado?.toLowerCase() === 'activo') || e.activo === 1
+        );
+        setEmpleados(activos);
+      } catch {
+        // Fallback: trae todo y filtra aquí
+        try {
+          const res2 = await axios.get(`${BASE_URL}/empleados`);
+          const data2: Empleado[] = Array.isArray(res2.data) ? res2.data : [];
+          const activos2 = data2.filter(
+            (e) => (e.estado?.toLowerCase() === 'activo') || e.activo === 1
+          );
+          setEmpleados(activos2);
+        } catch (err) {
+          console.error('Error al obtener empleados', err);
+          setEmpleados([]);
+        }
+      }
+    };
+
+    cargarEmpleadosActivos();
   }, []);
 
   const handleEmpleadoChange = (empleadoId: number) => {
-    const empleado = empleados.find(emp => emp.id === empleadoId);
+    const empleado = empleados.find((emp) => emp.id === empleadoId);
     if (empleado) {
       setEmpleadoSeleccionado(empleadoId);
       setNombre(empleado.nombres);
@@ -30,17 +63,17 @@ const RegistrarUsuario = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
     setSuccess('');
 
-    if (!empleadoSeleccionado || !correo || !contrasena || !cargo) {
+    if (!empleadoSeleccionado || !correo.trim() || !contrasena || !cargo) {
       setError('Complete todos los campos requeridos');
       return;
     }
 
-    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-    if (!emailRegex.test(correo)) {
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(correo.trim())) {
       setError('El correo electrónico no es válido');
       return;
     }
@@ -50,24 +83,29 @@ const RegistrarUsuario = () => {
       return;
     }
 
-    axios.post(`${BASE_URL}/api/usuarios`, {
-      empleado_id: empleadoSeleccionado,
-      correo_electronico: correo,
-      contrasena: contrasena,
-      rol: cargo
-    })
-      .then(() => {
-        setSuccess('Usuario registrado correctamente');
-        setEmpleadoSeleccionado(undefined);
-        setCorreo('');
-        setContrasena('');
-        setNombre('');
-        setCargo('');
-      })
-      .catch(error => {
-        const msg = error.response?.data || 'No se pudo registrar el usuario';
-        setError(msg);
+    try {
+      await axios.post(`${BASE_URL}/api/usuarios`, {
+        empleado_id: empleadoSeleccionado,
+        correo_electronico: correo.trim(),
+        contrasena: contrasena,
+        rol: cargo,
       });
+
+      setSuccess('Usuario registrado correctamente');
+      setEmpleadoSeleccionado(undefined);
+      setCorreo('');
+      setContrasena('');
+      setNombre('');
+      setCargo('');
+    } catch (error) {
+      const err = error as AxiosError<any>;
+      const msg =
+        (typeof err.response?.data === 'string' && err.response?.data) ||
+        err.response?.data?.mensaje ||
+        err.response?.data?.error ||
+        'No se pudo registrar el usuario';
+      setError(msg);
+    }
   };
 
   return (
@@ -84,7 +122,7 @@ const RegistrarUsuario = () => {
           style={styles.picker}
           onValueChange={handleEmpleadoChange}
         >
-          <Picker.Item label="Selecciona un empleado" value={undefined} />
+          <Picker.Item label="Selecciona un empleado activo" value={undefined} />
           {empleados.map((empleado) => (
             <Picker.Item
               key={empleado.id}
@@ -111,8 +149,10 @@ const RegistrarUsuario = () => {
           style={styles.input}
           placeholder="Correo electrónico"
           value={correo}
-          onChangeText={setCorreo}
+          onChangeText={(t) => setCorreo(t.trim())}
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
       </View>
 
