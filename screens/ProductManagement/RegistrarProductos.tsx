@@ -13,7 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { Picker } from '@react-native-picker/picker';
-import { BASE_URL } from '../conexion'; // ✅ Importa la URL base
+import { BASE_URL } from '../conexion';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'RegistrarProducto'>;
 
@@ -21,6 +21,10 @@ interface Unidad {
   id: number;
   nombre: string;
 }
+
+const REGEX_CODIGO = /^\d{1,10}$/;
+// Letras (con acentos), números y espacios
+const REGEX_NOMBRE = /^[a-zA-ZÀ-ÿ0-9\s]+$/;
 
 const RegistrarProducto = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -31,6 +35,7 @@ const RegistrarProducto = () => {
   const [unidadId, setUnidadId] = useState<number | null>(null);
   const [unidades, setUnidades] = useState<Unidad[]>([]);
   const [cargandoUnidades, setCargandoUnidades] = useState(true);
+  const [registrando, setRegistrando] = useState(false);
 
   useEffect(() => {
     const cargarUnidades = async () => {
@@ -54,29 +59,40 @@ const RegistrarProducto = () => {
   }, []);
 
   const handleRegistrar = async () => {
+    // Validaciones básicas
     if (!codigo || !nombre || !descripcion || unidadId === null) {
       Alert.alert('Error', 'Todos los campos son obligatorios.');
       return;
     }
 
-    if (!/^\d+$/.test(codigo)) {
-      Alert.alert('Error', 'El código del producto debe contener solo números.');
+    if (!REGEX_CODIGO.test(codigo)) {
+      Alert.alert('Error', 'El código del producto debe contener solo números (máx. 10).');
       return;
     }
 
-    if (codigo.length > 10) {
-      Alert.alert('Error', 'El código no debe exceder los 10 dígitos.');
+    // Normalizar nombre (trim y colapsar espacios)
+    const nombreNormalizado = nombre.trim().replace(/\s+/g, ' ');
+
+    if (!REGEX_NOMBRE.test(nombreNormalizado)) {
+      Alert.alert('Error', 'El nombre solo puede incluir letras, números y espacios.');
+      return;
+    }
+
+    if (nombreNormalizado.length < 2) {
+      Alert.alert('Error', 'El nombre debe tener al menos 2 caracteres.');
       return;
     }
 
     try {
+      setRegistrando(true);
+
       const response = await fetch(`${BASE_URL}/api/productos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           codigo,
-          nombre,
-          descripcion,
+          nombre: nombreNormalizado,
+          descripcion: descripcion.trim(),
           unidad_medida_id: unidadId,
           estado: 'Activo',
         }),
@@ -85,15 +101,28 @@ const RegistrarProducto = () => {
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert('Éxito', 'Producto registrado correctamente.');
-        navigation.navigate('VisualizarCatalogo');
+        Alert.alert('Éxito', 'Producto registrado correctamente.', [
+          {
+            text: 'Aceptar',
+            onPress: () => navigation.navigate('VisualizarCatalogo'),
+          },
+        ]);
       } else {
-        Alert.alert('Error', data.mensaje || 'No se pudo registrar el producto.');
+        Alert.alert('Error', data?.mensaje || 'No se pudo registrar el producto.');
       }
     } catch (error) {
       console.error('Error al registrar producto:', error);
       Alert.alert('Error de conexión', 'No se pudo conectar al servidor.');
+    } finally {
+      setRegistrando(false);
     }
+  };
+
+  // Sanitizador en tiempo real para el nombre (bloquea caracteres especiales al escribir)
+  const onChangeNombre = (text: string) => {
+    // Elimina cualquier carácter no permitido
+    const limpio = text.replace(/[^a-zA-ZÀ-ÿ0-9\s]/g, '');
+    setNombre(limpio);
   };
 
   return (
@@ -108,13 +137,15 @@ const RegistrarProducto = () => {
         onChangeText={(text) => {
           if (/^\d{0,10}$/.test(text)) setCodigo(text);
         }}
+        maxLength={10}
       />
 
       <TextInput
         style={styles.input}
         placeholder="Nombre del producto"
         value={nombre}
-        onChangeText={setNombre}
+        onChangeText={onChangeNombre}
+        maxLength={60}
       />
 
       <TextInput
@@ -122,6 +153,7 @@ const RegistrarProducto = () => {
         placeholder="Descripción"
         value={descripcion}
         onChangeText={setDescripcion}
+        maxLength={200}
       />
 
       <View style={styles.pickerContainer}>
@@ -142,8 +174,16 @@ const RegistrarProducto = () => {
         )}
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleRegistrar}>
-        <Text style={styles.buttonText}>Registrar</Text>
+      <TouchableOpacity
+        style={[styles.button, registrando && styles.buttonDisabled]}
+        onPress={handleRegistrar}
+        disabled={registrando}
+      >
+        {registrando ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Registrar</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -195,6 +235,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 10,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: '#fff',

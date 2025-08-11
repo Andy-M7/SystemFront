@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Picker } from '@react-native-picker/picker';
-import { BASE_URL } from '../conexion'; // ✅ NUEVO
+import { BASE_URL } from '../conexion';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditarProducto'>;
 type RouteParams = RouteProp<RootStackParamList, 'EditarProducto'>;
@@ -22,63 +23,90 @@ interface Unidad {
   nombre: string;
 }
 
+const REGEX_NOMBRE = /^[a-zA-ZÀ-ÿ0-9\s]+$/;
+
 const EditarProducto = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
   const { codigo } = route.params;
 
+  const [cargando, setCargando] = useState(true);
   const [producto, setProducto] = useState<any>(null);
+
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
+
   const [unidadId, setUnidadId] = useState<number | null>(null);
+  const [unidadNombreInicial, setUnidadNombreInicial] = useState<string | null>(null); // por si el API no trae ID
   const [unidadesDisponibles, setUnidadesDisponibles] = useState<Unidad[]>([]);
 
+  // 1) Cargar unidades
+  const cargarUnidades = async () => {
+    const res = await fetch(`${BASE_URL}/api/unidades`);
+    const data = await res.json();
+    if (!res.ok) throw new Error('No se pudieron cargar las unidades');
+    if (!Array.isArray(data)) throw new Error('Formato inválido de unidades');
+    setUnidadesDisponibles(data);
+  };
+
+  // 2) Cargar producto
+  const cargarProducto = async () => {
+    const response = await fetch(`${BASE_URL}/api/productos/buscar?criterio=${codigo}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.mensaje || 'No se pudo cargar el producto');
+
+    setProducto(data);
+    setNombre(data.nombre || '');
+    setDescripcion(data.descripcion || '');
+
+    // Preferimos el ID si existe; si no, guardamos el nombre para resolverlo luego
+    if (typeof data.unidad_medida_id === 'number') {
+      setUnidadId(data.unidad_medida_id);
+    } else if (typeof data.unidad_medida === 'string') {
+      setUnidadNombreInicial(data.unidad_medida);
+    }
+  };
+
+  // 3) Cargar todo
   useEffect(() => {
-    const cargarProducto = async () => {
+    (async () => {
       try {
-        const response = await fetch(`${BASE_URL}/api/productos/buscar?criterio=${codigo}`);
-        const data = await response.json();
-        if (response.ok) {
-          setProducto(data);
-          setNombre(data.nombre);
-          setDescripcion(data.descripcion);
-
-          const unidadEncontrada = unidadesDisponibles.find((u) => u.nombre === data.unidad_medida);
-          if (unidadEncontrada) {
-            setUnidadId(unidadEncontrada.id);
-          }
-        } else {
-          Alert.alert('Error', data.mensaje || 'No se pudo cargar el producto');
-        }
-      } catch (error) {
-        console.error(error);
-        Alert.alert('Error', 'No se pudo conectar al servidor');
+        await cargarUnidades();
+        await cargarProducto();
+      } catch (e) {
+        console.error(e);
+        Alert.alert('Error', e instanceof Error ? e.message : 'Error al cargar datos');
+      } finally {
+        setCargando(false);
       }
-    };
-
-    const cargarUnidades = async () => {
-      try {
-        const res = await fetch(`${BASE_URL}/api/unidades`);
-        const data = await res.json();
-        if (res.ok && Array.isArray(data)) {
-          setUnidadesDisponibles(data);
-        }
-      } catch (error) {
-        console.error('Error al cargar unidades:', error);
-      }
-    };
-
-    const cargarTodo = async () => {
-      await cargarUnidades();
-      await cargarProducto();
-    };
-
-    cargarTodo();
+    })();
   }, [codigo]);
+
+  // 4) Si no vino unidad_medida_id pero sí nombre, resolvemos el ID cuando las unidades ya están
+  useEffect(() => {
+    if (unidadId === null && unidadNombreInicial && unidadesDisponibles.length > 0) {
+      const encontrada = unidadesDisponibles.find(
+        (u) => u.nombre.toLowerCase().trim() === unidadNombreInicial.toLowerCase().trim()
+      );
+      if (encontrada) setUnidadId(encontrada.id);
+    }
+  }, [unidadNombreInicial, unidadesDisponibles, unidadId]);
+
+  // Sanitizador en tiempo real para evitar caracteres especiales en Nombre
+  const onChangeNombre = (text: string) => {
+    const limpio = text.replace(/[^a-zA-ZÀ-ÿ0-9\s]/g, '');
+    setNombre(limpio);
+  };
 
   const handleGuardar = async () => {
     if (!nombre || !descripcion || unidadId === null) {
       Alert.alert('Error', 'Todos los campos son obligatorios.');
+      return;
+    }
+
+    const nombreLimpio = nombre.trim().replace(/\s+/g, ' ');
+    if (!REGEX_NOMBRE.test(nombreLimpio)) {
+      Alert.alert('Error', 'El nombre solo puede incluir letras, números y espacios.');
       return;
     }
 
@@ -87,8 +115,8 @@ const EditarProducto = () => {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nombre,
-          descripcion,
+          nombre: nombreLimpio,
+          descripcion: descripcion.trim(),
           unidad_medida_id: unidadId,
         }),
       });
@@ -139,6 +167,14 @@ const EditarProducto = () => {
     );
   };
 
+  if (cargando) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   if (!producto) return null;
 
   return (
@@ -147,8 +183,21 @@ const EditarProducto = () => {
 
       <TextInput style={[styles.input, styles.disabledInput]} value={codigo} editable={false} />
 
-      <TextInput style={styles.input} value={nombre} onChangeText={setNombre} placeholder="Nombre" />
-      <TextInput style={styles.input} value={descripcion} onChangeText={setDescripcion} placeholder="Descripción" />
+      <TextInput
+        style={styles.input}
+        value={nombre}
+        onChangeText={onChangeNombre}
+        placeholder="Nombre"
+        maxLength={60}
+      />
+
+      <TextInput
+        style={styles.input}
+        value={descripcion}
+        onChangeText={setDescripcion}
+        placeholder="Descripción"
+        maxLength={200}
+      />
 
       <View style={styles.pickerContainer}>
         <Text style={styles.pickerLabel}>Unidad de medida:</Text>
@@ -167,6 +216,11 @@ const EditarProducto = () => {
       <TouchableOpacity style={styles.button} onPress={handleGuardar}>
         <Text style={styles.buttonText}>Guardar Cambios</Text>
       </TouchableOpacity>
+
+      {/* Si quieres mostrar también el botón Eliminar/Inactivar, descomenta: */}
+      {/* <TouchableOpacity style={[styles.button, styles.deleteButton]} onPress={handleEliminar}>
+        <Text style={styles.buttonText}>Inactivar Producto</Text>
+      </TouchableOpacity> */}
     </ScrollView>
   );
 };
