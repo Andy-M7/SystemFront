@@ -101,7 +101,6 @@ const RegistrarEmpleado = () => {
         <View style={styles.pickerContainer}>
           <Picker selectedValue={cargo} onValueChange={setCargo} style={styles.picker}>
             <Picker.Item label="Supervisor" value="Supervisor" />
-            <Picker.Item label="Técnico" value="Técnico" />
             <Picker.Item label="Administrador" value="Administrador" />
             <Picker.Item label="Logística" value="Logística" />
           </Picker>

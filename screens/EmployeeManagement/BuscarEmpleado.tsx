@@ -262,7 +262,6 @@ const BuscarEmpleado: React.FC = () => {
           <Text style={styles.label}>Cargo</Text>
           <Picker selectedValue={cargo} style={styles.picker} onValueChange={setCargo}>
             <Picker.Item label="Supervisor" value="Supervisor" />
-            <Picker.Item label="Técnico" value="Técnico" />
             <Picker.Item label="Administrador" value="Administrador" />
             <Picker.Item label="Logística" value="Logística" />
           </Picker>

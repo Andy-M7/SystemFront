@@ -1,4 +1,5 @@
 export type RootStackParamList = {
+  // Auth
   Login: undefined;
   Dashboard: undefined;
 
@@ -6,6 +7,8 @@ export type RootStackParamList = {
   GestionarEmpleados: undefined;
   ListarEmpleados: undefined;
   RegistrarEmpleado: undefined;
+  // (Si usas la pantalla de búsqueda/edición por nombre)
+  // BuscarEmpleado: undefined;
 
   // Clientes
   GestionarClientes: undefined;
@@ -33,11 +36,9 @@ export type RootStackParamList = {
   EditarSolicitud: { solicitud_id: number };
   VisualizarSolicitudes: undefined;
   HistorialSolicitudes: undefined;
+  DetalleSolicitud: { solicitud_id: number }; // 🔹
 
-  // 🔹 Agrega esta línea:
-  DetalleSolicitud: { solicitud_id: number };
-
-  //Lógistica
+  // Logística
   GestionarLogistica: undefined;
   SolicitudesPendientesLogistica: undefined;
   GenerarReporteEstado: undefined;
